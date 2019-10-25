@@ -1,4 +1,17 @@
+# Virtual env
 venv/*
+
+# Flask
+instance/
+upload/*
+
+# Doc
 *.html
 *.pdf
+
+# Makefile
 path.mk
+
+# Python
+__pycache__
+*.pyc
