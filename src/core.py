@@ -5,7 +5,7 @@ import json
 from src.db import get_db
 from src.script import build_cards, check_validity
 
-bp = flask.Blueprint("dooble", __name__, url_prefix="/")
+bp = flask.Blueprint("dobble", __name__)
 
 
 @bp.route("/", methods=["POST", "GET"])
@@ -33,7 +33,7 @@ def homepage():
             cursor = db.cursor()
             cursor.execute(
                 "INSERT INTO game (pictures, cards) VALUES (?, ?)",
-                (json.dumps(filename), json.dumps(cards)),
+                (json.dumps(files), json.dumps(cards)),
             )
             db.commit()
             id_game = cursor.lastrowid
@@ -43,4 +43,11 @@ def homepage():
 
 @bp.route("/display/<int:id_game>", methods=["GET"])
 def display(id_game):
-    return flask.render_template("display.html")
+    db = get_db()
+    game = db.execute("SELECT * FROM game WHERE id = ?", (id_game,)).fetchone()
+    if game is not None:
+        return flask.render_template(
+            "display.html", cards=game["cards"], pictures=game["pictures"]
+        )
+    else:
+        return flask.redirect(flask.url_for("homepage"))

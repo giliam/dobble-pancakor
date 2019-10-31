@@ -3,8 +3,8 @@ Dobble generator based on [explanation given by M. Deléglise](http://math.univ-
 # How-to
 
 ```bash
-set FLASK_ENV=development
-set FLASK_APP=src/app.py
+set FLASK_DEBUG=1
+set FLASK_APP=run.py
 flask init-db
 flask run
 ```
