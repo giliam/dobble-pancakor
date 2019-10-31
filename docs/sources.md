@@ -8,5 +8,5 @@ date: 25/10/2019
 * https://fr.wikipedia.org/wiki/Dobble#Algorithme_de_g%C3%A9n%C3%A9ration
 * http://math.univ-lyon1.fr/~deleglis/PDF/dobble.pdf
 
-Dooble property : *for all cards pair, there exists a picture and only one in common*
+Dobble property : *for all cards pair, there exists a picture and only one in common*
 Looks like projective plan property : *for all lines pair, there exists one and only one point in common*.
