@@ -1,0 +1,52 @@
+{% extends "layout.html" %}
+
+{% block content %}
+{% for card in cards %}
+<canvas id="canvas_{{loop.index}}" style="width: 600px; height: 600px;">
+</canvas>
+{% endfor %}
+
+<script type="text/javascript">
+{% for card in cards %}
+(function(){
+    var c = document.getElementById("canvas_{{loop.index}}");
+    var ctx = c.getContext("2d");
+
+    var scale = 2;
+    c.width = 600 * scale;
+    c.height = 600 * scale;
+
+    var radius = {{radius}};
+
+    ctx.beginPath();
+    ctx.arc(radius, radius, radius, 0, 2 * Math.PI);
+    ctx.stroke(); 
+    // cf. https://stackoverflow.com/questions/15048279/drawimage-not-working
+    {% for image in card %}
+    var logoImg{{loop.index}} = new Image();
+    logoImg{{loop.index}}.onload = function () {
+        var originalWidth = logoImg{{loop.index}}.width;
+        var originalHeight = logoImg{{loop.index}}.height;
+
+        if( originalHeight > originalWidth ) {
+            logoImg{{loop.index}}.height = {{max_width}};
+            logoImg{{loop.index}}.width = originalWidth*{{max_width}}/originalHeight;
+        }
+        else {
+            logoImg{{loop.index}}.width = {{max_width}};
+            logoImg{{loop.index}}.height = originalHeight*{{max_width}}/originalWidth;
+        }
+        var logo = {
+            img: logoImg{{loop.index}},
+            x: {{positions[loop.index0].x}}-logoImg{{loop.index}}.width/2.0,
+            y: {{positions[loop.index0].y}}-logoImg{{loop.index}}.height/2.0
+        }
+        ctx.drawImage(logo.img, logo.x, logo.y, logo.img.width, logo.img.height);
+    };
+    logoImg{{loop.index}}.src = "/static/{{pictures[image].pic}}";
+    {% endfor %}
+})();
+{% endfor %}
+</script>
+
+{% endblock %}

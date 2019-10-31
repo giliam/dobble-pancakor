@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<form method="post" action="" enctype="multipart/form-data">
+    <label for="n">Number of symbol per card</label>
+    <select name="n" id="n">
+        {% for i in number_symbols %}
+        <option value="{{i}}">{{i}} symbols</option>
+        {% endfor %}
+    </select>
+    <label for="file[]">Files</label>
+    <input type="file" name="file[]" multiple="">
+    <input type="submit" value="Send" />
+</form>
+{% endblock %}

@@ -6,7 +6,6 @@ instance/
 upload/*
 
 # Doc
-*.html
 *.pdf
 
 # Makefile
