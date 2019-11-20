@@ -10,12 +10,12 @@ args = parser.parse_args()
 
 NB_RUNS = args.nb_runs
 
-NB_IMAGES = 4
+NB_IMAGES = 7
 
 
 THRESHOLD_BETWEEN_IMAGES = 0.05
-MIN_SIZE_REC = 0.35
-MAX_SIZE_REC = 0.65
+MIN_SIZE_REC = 0.25 * math.sqrt(math.pi * 1 * 1 / NB_IMAGES)
+MAX_SIZE_REC = 0.7 * math.sqrt(math.pi * 1 * 1 / NB_IMAGES)
 STEP_SIZE_REC = 0.025
 POSITION_IMAGE_RADIUS = 0.55
 
@@ -26,7 +26,7 @@ THRESHOLD_FAIL_ALL = 10000
 
 MIN_RANDOM_AUTHORIZED = 0.1
 
-COLORS = ["r", "b", "g", "orange"]
+COLORS = ["r", "b", "g", "orange", "yellow", "purple", "pink"]
 
 
 class Rectangle:
@@ -94,11 +94,7 @@ def is_in_circle(rec):
     )
 
 
-for glob_i in range(NB_RUNS):
-    sizes = np.random.normal(1, 0.25, NB_IMAGES)
-
-    rectangles = list(sizes)
-
+def generate(rectangles):
     nb_tries = 0
     nb_total_tries = 0
 
@@ -157,34 +153,41 @@ for glob_i in range(NB_RUNS):
             print("TOTAL FAILS")
             break
         print()
+    return real_positions, positions, placed_random_level, placed_rectangles
 
-    def plot_rectangles(real_positions=[], positions=set(), *rects):
-        # Create figure and axes
-        fig, ax = plt.subplots(1)
-        ax.add_patch(patches.Circle((0, 0), 1))
-        for position in real_positions:
-            print(position[0])
-            ax.plot(
-                [position[0]], [position[1]], marker="o", markersize=2, color="black"
-            )
-        for position in positions:
-            ax.plot(
-                [position[0]], [position[1]], marker="o", markersize=1, color="black"
-            )
-        for i, rectangle in enumerate(rects):
-            # Create a Rectangle patch
-            rect = rectangle.get_mpl_rec(i)
-            print(rect)
-            # Add the patch to the Axes
-            ax.add_patch(rect)
 
-        plt.xlim(-1.2, 1.2)
-        plt.ylim(-1.2, 1.2)
-        if NB_RUNS == 1:
-            plt.show()
-        else:
-            plt.savefig("tests/" + str(glob_i) + ".png")
-        plt.close()
+def plot_rectangles(real_positions=[], positions=set(), *rects):
+    # Create figure and axes
+    fig, ax = plt.subplots(1)
+    ax.add_patch(patches.Circle((0, 0), 1))
+    for position in real_positions:
+        print(position[0])
+        ax.plot([position[0]], [position[1]], marker="o", markersize=2, color="black")
+    for position in positions:
+        ax.plot([position[0]], [position[1]], marker="o", markersize=1, color="black")
+    for i, rectangle in enumerate(rects):
+        # Create a Rectangle patch
+        rect = rectangle.get_mpl_rec(i)
+        print(rect)
+        # Add the patch to the Axes
+        ax.add_patch(rect)
+
+    plt.xlim(-1.2, 1.2)
+    plt.ylim(-1.2, 1.2)
+    if NB_RUNS == 1:
+        plt.show()
+    else:
+        plt.savefig("tests/" + str(glob_i) + ".png")
+    plt.close()
+
+
+for glob_i in range(NB_RUNS):
+    sizes = np.random.normal(1, 0.25, NB_IMAGES)
+
+    rectangles = list(sizes)
+    real_positions, positions, placed_random_level, placed_rectangles = generate(
+        rectangles
+    )
 
     print("positions", positions)
     print("placed_random_level", placed_random_level)
