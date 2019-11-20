@@ -1,6 +1,7 @@
 import math
 import os
 import pathlib
+import random
 
 import flask
 import json
@@ -14,6 +15,8 @@ AUTHORIZED_EXT = ["jpg", "jpeg", "png", "gif", "jfif"]
 
 RADIUS = 500
 POSITION_IMAGE_RADIUS = 0.55
+MIN_SIZE_CARD = 0.5  # In %
+MAX_SIZE_CARD = 1.30  # In %
 
 
 @bp.route("/", methods=["POST", "GET"])
@@ -48,7 +51,7 @@ def homepage():
             )
             db.commit()
             id_game = cursor.lastrowid
-            return flask.redirect(flask.url_for("dooble.display", id_game=id_game))
+            return flask.redirect(flask.url_for("dobble.display", id_game=id_game))
     return flask.render_template("generator.html", number_symbols=(4, 6, 8, 12, 14))
 
 
@@ -93,6 +96,20 @@ def get_max_width_cards(nb_sym_per_card):
     return max_width
 
 
+def get_real_widths(nb_cards, nb_sym_per_card, max_width):
+    if nb_sym_per_card <= 0:
+        raise ValueError("Should be at least one symbol per card")
+    if max_width <= 0:
+        raise ValueError("Max Width should be positive")
+    sizes_cards = [
+        (i * (MAX_SIZE_CARD - MIN_SIZE_CARD) / (nb_sym_per_card - 1) + MIN_SIZE_CARD)
+        * max_width
+        for i in range(nb_sym_per_card)
+    ]
+
+    return {i: random.sample(sizes_cards, nb_sym_per_card) for i in range(nb_cards)}
+
+
 def add_id_to_picture(pictures):
     return [{"id": i, "pic": pic} for i, pic in enumerate(pictures)]
 
@@ -110,6 +127,7 @@ def display(id_game):
         nb_sym_per_card = len(cards[0])
         positions = get_positions_cards(nb_sym_per_card)
         pictures = add_id_to_picture(pictures)
+        max_width = get_max_width_cards(nb_sym_per_card)
         return flask.render_template(
             "display.html",
             cards=cards,
@@ -117,7 +135,8 @@ def display(id_game):
             positions=positions,
             radius=RADIUS,
             position_radius=POSITION_IMAGE_RADIUS,
-            max_width=get_max_width_cards(nb_sym_per_card),
+            max_width=max_width,
+            real_width_cards=get_real_widths(len(cards), nb_sym_per_card, max_width),
         )
     else:
         return flask.redirect(flask.url_for("homepage"))

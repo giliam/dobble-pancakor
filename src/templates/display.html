@@ -8,6 +8,7 @@
 
 <script type="text/javascript">
 {% for card in cards %}
+{% set cardid = loop.index0 %}
 (function(){
     var c = document.getElementById("canvas_{{loop.index}}");
     var ctx = c.getContext("2d");
@@ -22,19 +23,21 @@
     ctx.arc(radius, radius, radius, 0, 2 * Math.PI);
     ctx.stroke(); 
     // cf. https://stackoverflow.com/questions/15048279/drawimage-not-working
+    // {{ cardid }}
     {% for image in card %}
     var logoImg{{loop.index}} = new Image();
     logoImg{{loop.index}}.onload = function () {
         var originalWidth = logoImg{{loop.index}}.width;
         var originalHeight = logoImg{{loop.index}}.height;
 
+        var max_width = {{real_width_cards[cardid][loop.index0]}}
         if( originalHeight > originalWidth ) {
-            logoImg{{loop.index}}.height = {{max_width}};
-            logoImg{{loop.index}}.width = originalWidth*{{max_width}}/originalHeight;
+            logoImg{{loop.index}}.height = max_width;
+            logoImg{{loop.index}}.width = originalWidth*max_width/originalHeight;
         }
         else {
-            logoImg{{loop.index}}.width = {{max_width}};
-            logoImg{{loop.index}}.height = originalHeight*{{max_width}}/originalWidth;
+            logoImg{{loop.index}}.width = max_width;
+            logoImg{{loop.index}}.height = originalHeight*max_width/originalWidth;
         }
         var logo = {
             img: logoImg{{loop.index}},
