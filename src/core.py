@@ -1,6 +1,8 @@
+import io
 import math
 import os
 import pathlib
+from PIL import Image
 import random
 
 import flask
@@ -8,6 +10,7 @@ import json
 
 from src.db import get_db
 from src.script import build_cards, check_validity
+from src.place import generate_card
 
 bp = flask.Blueprint("dobble", __name__)
 
@@ -30,14 +33,28 @@ def homepage():
         nb_files = len(list(pathlib.Path("src/static/").glob("*")))
 
         files = []
+        files_sizes = []
         for image in uploaded_files:
             extension = image.filename.split(".")[-1]
             if not extension in AUTHORIZED_EXT:
                 continue
             nb_files += 1
+
             filename = "%d.%s" % (nb_files, extension)
-            image.save("src/static/" + filename)
+            # image.save("src/static/" + filename)
+
+            image_bytes = io.BytesIO(image.stream.read())
+            # save bytes in a buffer
+
+            img = Image.open(image_bytes)
+            img.save("src/static/" + filename)
+            # produces a PIL Image object
+
+            size = img.size
+
+            # read the size of the Image object
             files.append(filename)
+            files_sizes.append(size)
 
         cards = build_cards(nb_elements - 1)
         nb_errors = check_validity(cards)
@@ -46,33 +63,13 @@ def homepage():
         else:
             cursor = db.cursor()
             cursor.execute(
-                "INSERT INTO game (pictures, cards) VALUES (?, ?)",
-                (json.dumps(files), json.dumps(cards)),
+                "INSERT INTO game (pictures, cards, sizes) VALUES (?, ?, ?)",
+                (json.dumps(files), json.dumps(cards), json.dumps(files_sizes)),
             )
             db.commit()
             id_game = cursor.lastrowid
             return flask.redirect(flask.url_for("dobble.display", id_game=id_game))
     return flask.render_template("generator.html", number_symbols=(4, 6, 8, 12, 14))
-
-
-def get_positions_cards(nb_sym_per_card):
-    if nb_sym_per_card <= 0:
-        raise ValueError("Should be at least one symbol per card")
-    positions = []
-    for i in range(nb_sym_per_card):
-        positions.append(
-            {
-                "x": RADIUS
-                * POSITION_IMAGE_RADIUS
-                * math.cos(i * math.pi * 2.0 / nb_sym_per_card)
-                + RADIUS,
-                "y": RADIUS
-                * POSITION_IMAGE_RADIUS
-                * math.sin(i * math.pi * 2.0 / nb_sym_per_card)
-                + RADIUS,
-            }
-        )
-    return positions
 
 
 def get_max_width_cards(nb_sym_per_card):
@@ -96,18 +93,52 @@ def get_max_width_cards(nb_sym_per_card):
     return max_width
 
 
-def get_real_widths(nb_cards, nb_sym_per_card, max_width):
+def get_positions(cards, nb_sym_per_card, max_width, files_sizes):
     if nb_sym_per_card <= 0:
         raise ValueError("Should be at least one symbol per card")
     if max_width <= 0:
         raise ValueError("Max Width should be positive")
-    sizes_cards = [
-        (i * (MAX_SIZE_CARD - MIN_SIZE_CARD) / (nb_sym_per_card - 1) + MIN_SIZE_CARD)
-        * max_width
-        for i in range(nb_sym_per_card)
-    ]
 
-    return {i: random.sample(sizes_cards, nb_sym_per_card) for i in range(nb_cards)}
+    max_size_rec = max_width / RADIUS * 0.85
+    min_size_rec = 0.01 * max_size_rec
+
+    positions = []
+    output_sizes = []
+
+    nb_cards = len(cards)
+
+    print("nb_sym_per_card", nb_sym_per_card)
+    print("min_size_rec", min_size_rec)
+    print("max_size_rec", max_size_rec)
+
+    for card in cards:
+        new_sizes = []
+        old_sizes = []
+        for picture in card:
+            new_sizes.append(
+                (picture, files_sizes[picture][1] / files_sizes[picture][0])
+            )
+        random.shuffle(new_sizes)
+
+        placed_rectangles = generate_card(
+            nb_sym_per_card, new_sizes, min_size_rec, max_size_rec
+        )
+        positions.append(
+            {
+                id_pic: {
+                    "x": rec.pos[0] * RADIUS + RADIUS,
+                    "y": rec.pos[1] * RADIUS + RADIUS,
+                }
+                for id_pic, rec in placed_rectangles.items()
+            }
+        )
+        output_sizes.append(
+            {
+                id_pic: (rec.size * RADIUS, rec.size * rec.ratio * RADIUS)
+                for id_pic, rec in placed_rectangles.items()
+            }
+        )
+    return positions, output_sizes
 
 
 def add_id_to_picture(pictures):
@@ -122,12 +153,15 @@ def display(id_game):
         try:
             cards = json.loads(game["cards"])
             pictures = json.loads(game["pictures"])
+            sizes = json.loads(game["sizes"])
         except json.decoder.JSONDecodeError:
             return flask.redirect(flask.url_for("homepage"))
+
         nb_sym_per_card = len(cards[0])
-        positions = get_positions_cards(nb_sym_per_card)
         pictures = add_id_to_picture(pictures)
         max_width = get_max_width_cards(nb_sym_per_card)
+        positions, sizes = get_positions(cards, nb_sym_per_card, max_width, sizes)
+
         return flask.render_template(
             "display.html",
             cards=cards,
@@ -136,7 +170,7 @@ def display(id_game):
             radius=RADIUS,
             position_radius=POSITION_IMAGE_RADIUS,
             max_width=max_width,
-            real_width_cards=get_real_widths(len(cards), nb_sym_per_card, max_width),
+            sizes=sizes,
         )
     else:
         return flask.redirect(flask.url_for("homepage"))
