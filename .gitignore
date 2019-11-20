@@ -14,3 +14,5 @@ path.mk
 # Python
 __pycache__
 *.pyc
+TODO.html
+docs/sources.html
