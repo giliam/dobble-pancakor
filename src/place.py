@@ -4,16 +4,11 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
 
-parser = argparse.ArgumentParser(description="Run PCA and other clustering algorithms.")
-parser.add_argument("nb_runs", type=int, default=1, help="nb of runs", nargs="?")
-args = parser.parse_args()
+NB_IMAGES = 4
 
-NB_RUNS = args.nb_runs
+NB_RUNS = 1
 
-NB_IMAGES = 7
-
-
-THRESHOLD_BETWEEN_IMAGES = 0.05
+THRESHOLD_BETWEEN_IMAGES = 0.1
 MIN_SIZE_REC = 0.25 * math.sqrt(math.pi * 1 * 1 / NB_IMAGES)
 MAX_SIZE_REC = 0.7 * math.sqrt(math.pi * 1 * 1 / NB_IMAGES)
 STEP_SIZE_REC = 0.025
@@ -75,7 +70,7 @@ def test_intersection(rec_1, rec_2):
 
 
 def is_available(others, current_rec):
-    for rectangle in others:
+    for _, rectangle in others:
         if test_intersection(rectangle, current_rec):
             return False
     return True
@@ -94,7 +89,14 @@ def is_in_circle(rec):
     )
 
 
-def generate(rectangles):
+def generate_card(
+    nb_images,
+    rectangles,
+    min_size_rec=MIN_SIZE_REC,
+    max_size_rec=MAX_SIZE_REC,
+    verbose=False,
+    return_all=False,
+):
     nb_tries = 0
     nb_total_tries = 0
 
@@ -106,74 +108,85 @@ def generate(rectangles):
     authorized_random_position = MIN_RANDOM_AUTHORIZED
 
     while len(rectangles) > 0:
-        new_rectangle = rectangles.pop()
-        print("format", new_rectangle, authorized_random_position)
+        id_picture, new_rectangle = rectangles.pop()
+        if verbose:
+            print("format", new_rectangle, authorized_random_position)
 
+        # Contains the center of the rectangle
         position = (
             POSITION_IMAGE_RADIUS
-            * math.cos((len(placed_rectangles)) * math.pi * 2.0 / NB_IMAGES),
+            * math.cos((len(placed_rectangles)) * math.pi * 2.0 / nb_images),
             POSITION_IMAGE_RADIUS
-            * math.sin((len(placed_rectangles)) * math.pi * 2.0 / NB_IMAGES),
+            * math.sin((len(placed_rectangles)) * math.pi * 2.0 / nb_images),
         )
         positions.add(position)
         position += (
             MOVING_RAND_THRESHOLD * authorized_random_position * np.random.random((2,))
         )
 
-        size = MAX_SIZE_REC
+        size = max_size_rec
         placed = False
-        while size > MIN_SIZE_REC:
+        while size > min_size_rec:
             cur_rect = Rectangle(position, size, new_rectangle)
             if is_available(placed_rectangles, cur_rect) and is_in_circle(cur_rect):
-                placed_rectangles.append(cur_rect)
+                placed_rectangles.append((id_picture, cur_rect))
                 placed_random_level.append(authorized_random_position)
                 real_positions.append(position)
                 nb_tries = 0
                 authorized_random_position = MIN_RANDOM_AUTHORIZED
-                print("Placed!")
+                if verbose:
+                    print("Placed!")
                 placed = True
                 break
             size -= STEP_SIZE_REC
 
         if not placed:
-            rectangles.append(new_rectangle)
+            rectangles.append((id_picture, new_rectangle))
             if len(rectangles) == 1:
                 nb_tries += 1
-            print("New try")
+            if verbose:
+                print("New try")
         if nb_tries % THRESHOLD_FAIL_SINGLE // 10 == (THRESHOLD_FAIL_SINGLE // 10 - 1):
             authorized_random_position *= 1.1
-            print("Increases authorized random", authorized_random_position)
+            if verbose:
+                print("Increases authorized random", authorized_random_position)
 
         if nb_tries >= THRESHOLD_FAIL_SINGLE:
-            print("FAILS")
+            if verbose:
+                print("FAILS")
             break
 
         nb_total_tries += 1
         if nb_total_tries >= THRESHOLD_FAIL_ALL:
-            print("TOTAL FAILS")
+            if verbose:
+                print("TOTAL FAILS")
             break
-        print()
-    return real_positions, positions, placed_random_level, placed_rectangles
+        if verbose:
+            print()
+    if return_all:
+        return (real_positions, positions, placed_random_level, placed_rectangles)
+    else:
+        return {key: val for key, val in placed_rectangles}
 
 
 def plot_rectangles(real_positions=[], positions=set(), *rects):
     # Create figure and axes
     fig, ax = plt.subplots(1)
-    ax.add_patch(patches.Circle((0, 0), 1))
+    ax.add_patch(patches.Circle((0, 0), 1, facecolor="white", edgecolor="black"))
     for position in real_positions:
-        print(position[0])
         ax.plot([position[0]], [position[1]], marker="o", markersize=2, color="black")
     for position in positions:
         ax.plot([position[0]], [position[1]], marker="o", markersize=1, color="black")
-    for i, rectangle in enumerate(rects):
+    for i, rectangle in rects:
         # Create a Rectangle patch
+        print(rectangle)
         rect = rectangle.get_mpl_rec(i)
-        print(rect)
         # Add the patch to the Axes
         ax.add_patch(rect)
 
     plt.xlim(-1.2, 1.2)
     plt.ylim(-1.2, 1.2)
+    plt.gca().set_aspect("equal", adjustable="box")
     if NB_RUNS == 1:
         plt.show()
     else:
@@ -181,15 +194,30 @@ def plot_rectangles(real_positions=[], positions=set(), *rects):
     plt.close()
 
 
-for glob_i in range(NB_RUNS):
-    sizes = np.random.normal(1, 0.25, NB_IMAGES)
+if __name__ == "__main__":
+    import argparse
 
-    rectangles = list(sizes)
-    real_positions, positions, placed_random_level, placed_rectangles = generate(
-        rectangles
+    parser = argparse.ArgumentParser(
+        description="Run PCA and other clustering algorithms."
     )
+    parser.add_argument("nb_runs", type=int, default=1, help="nb of runs", nargs="?")
+    args = parser.parse_args()
 
-    print("positions", positions)
-    print("placed_random_level", placed_random_level)
-    print("placed_rectangles", placed_rectangles)
-    plot_rectangles(real_positions, positions, *placed_rectangles)
+    NB_RUNS = args.nb_runs
+
+    for glob_i in range(NB_RUNS):
+        sizes = np.random.normal(1, 0.5, NB_IMAGES)
+
+        rectangles = list(enumerate(sizes))
+        print(rectangles)
+        (
+            real_positions,
+            positions,
+            placed_random_level,
+            placed_rectangles,
+        ) = generate_card(NB_IMAGES, rectangles, return_all=True)
+
+        print("placed_rectangles", placed_rectangles)
+        for i, rec in placed_rectangles:
+            print(i, rec.size, rec.size * rec.ratio, rec.ratio, COLORS[i % len(COLORS)])
+        plot_rectangles(real_positions, positions, *placed_rectangles)
